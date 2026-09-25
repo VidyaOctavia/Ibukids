@@ -1,2 +1,2 @@
 # Ibukids
-Ibuk's bot for discord 24/7
+Ibuki's bot for discord 24/7
