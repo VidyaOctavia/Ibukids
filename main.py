@@ -79,7 +79,7 @@ async def on_message(message):
             try:
                 # Panggil OpenRouter API (Model Hermes 3 - Free & Uncensored)
                 response = await client_openrouter.chat.completions.create(
-                    model="nousresearch/hermes-3-llama-3.8b:free",
+                    model="meta-llama/llama-3.3-70b-instruct:free",
                     messages=[
                         {"role": "system", "content": SYSTEM_INSTRUCTION},
                         {"role": "user", "content": clean_content}
