@@ -45,7 +45,7 @@ SYSTEM_INSTRUCTION = (
 async def generate_ibuki_response(user_input):
     try:
         response = client_gemini.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.8-flash',
             contents=user_input,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_INSTRUCTION,
@@ -59,7 +59,6 @@ async def generate_ibuki_response(user_input):
         print(f"[Gemini API Error]: {e}")
 
     return None
-
 # ---------------------------------------------------------
 # EMBED COMMAND HELP SIMPEL
 # ---------------------------------------------------------
