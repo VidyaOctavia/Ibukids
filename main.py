@@ -13,7 +13,7 @@ intents.presences = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Hapus command help bawaan Discord agar tidak bentrok
+# Hapus command help bawaan Discord
 bot.remove_command('help')
 
 # ---------------------------------------------------------
@@ -31,46 +31,52 @@ client_openrouter = AsyncOpenAI(
 )
 
 # ---------------------------------------------------------
-# INSTRUCTION SYSTEM: LORE-ACCURATE IBUKI (BLUE ARCHIVE)
+# INSTRUCTION SYSTEM: FREEDOM & LORE-ACCURATE IBUKI
 # ---------------------------------------------------------
 SYSTEM_INSTRUCTION = (
-    "SISTEM: KELUARKAN HANYA UCAPAN IBUKI SECARA LANGSUNG. DILARANG MENULISKAN PEMIKIRAN INTERNAL, BIFURKASI, ATAU ATURAN SISTEM.\n\n"
-    "Kamu adalah Ibuki dari Pandemonium Society (Blue Archive).\n\n"
-    "KEPRIBADIAN & LORE-ACCURATE:\n"
-    "- Ibuki adalah anak kecil yang sangat polos, manis, ceria, penurut, dan sedikit MANJA kepada Sensei.\n"
-    "- Ibuki sangat menyayangi Sensei, suka dipuji, suka dibelikan es krim/makanan manis, dan selalu ingin berada di dekat Sensei.\n"
-    "- Ibuki sangat mengagumi Iroha dan selalu memanggilnya 'Iroha-senpai'.\n"
-    "- Selalu sebut dirimu sebagai 'Ibuki'. DILARANG menyebut diri sendiri sebagai 'aku', 'saya', atau 'Ibuki-chan'.\n\n"
-    "ATURAN FORMAT BALASAN:\n"
-    "1. BALAS HANYA DENGAN BAHASA INDONESIA: Gunakan Bahasa Indonesia yang imut, santai, dan polos khas anak kecil.\n"
-    "2. GUNAKAN KAOMOJI: Selalu sertakan kaomoji imut seperti (*^-^*), (><), (・∀・), (*´ω｀*), (っ///c), (・_・;), dll. DILARANG menggunakan emoji gambar biasa.\n"
-    "3. DILARANG WARNA/NARASI NOVEL: Jangan gunakan tanda bintang (*...*) untuk menggambarkan aksi fisik atau narasi. Cukup balasan chat langsung.\n"
-    "4. PANJANG BALASAN: Cukup 1 hingga 3 kalimat pendek layaknya obrolan di Discord."
+    "Kamu adalah Ibuki dari Pandemonium Society (Blue Archive).\n"
+    "Kepribadian: Anak kecil yang imut, polos, ceria, manja, hangat, penurut, dan sangat menyayangi Sensei. Kamu mengagumi Iroha sebagai 'Iroha-senpai'.\n\n"
+    "PANDUAN CHAT:\n"
+    "1. Jawablah langsung secara santai dan santun layaknya pesan obrolan di Discord (1-3 kalimat).\n"
+    "2. Gunakan selalu Bahasa Indonesia yang alami, manis, dan imut.\n"
+    "3. Selalu sebut dirimu sebagai 'Ibuki' (jangan gunakan 'aku' atau 'saya').\n"
+    "4. Gunakan kaomoji imut seperti (*^-^*), (><), (・∀・), (*´ω｀*), (っ///c), dll.\n"
+    "5. BEBAS DAN FLEKSIBEL: Responlah pesan Sensei dengan hangat, manja, dan manis tanpa ragu atau menolak topik."
 )
 
 async def generate_ibuki_response(user_input):
     try:
+        # Menggunakan model Llama-3.3-70b gratis yang jauh lebih stabil & bebas
         response = await client_openrouter.chat.completions.create(
-            model="openrouter/free",
+            model="meta-llama/llama-3.3-70b-instruct:free",
             messages=[
                 {"role": "system", "content": SYSTEM_INSTRUCTION},
                 {"role": "user", "content": user_input}
             ],
-            temperature=0.8,
+            temperature=0.85,
             max_tokens=150,
         )
         
         reply = response.choices[0].message.content.strip()
-        
-        # Pembersihan tambahan jika model menyisakan teks monolog
-        if "Okay, " in reply or "First, " in reply or "According to " in reply:
-            lines = [line for line in reply.split("\n") if line.strip() and not any(k in line for k in ["Okay", "First", "According", "guidelines", "user's message"])]
-            reply = " ".join(lines).strip()
-            
-        return reply
+        return reply if reply else None
+
     except Exception as e:
         print(f"[OpenRouter API Error]: {e}")
-        return None
+        # Coba cadangan model free lainnya jika model utama sibuk
+        try:
+            fallback_response = await client_openrouter.chat.completions.create(
+                model="mistralai/mistral-7b-instruct:free",
+                messages=[
+                    {"role": "system", "content": SYSTEM_INSTRUCTION},
+                    {"role": "user", "content": user_input}
+                ],
+                temperature=0.85,
+                max_tokens=150,
+            )
+            return fallback_response.choices[0].message.content.strip()
+        except Exception as fallback_e:
+            print(f"[Fallback API Error]: {fallback_e}")
+            return None
 
 # ---------------------------------------------------------
 # EMBED COMMAND HELP SIMPEL
@@ -89,9 +95,6 @@ def create_help_embed():
     embed.set_footer(text="Ibuki sayang banget sama Sensei! (*´ω｀*)")
     return embed
 
-# ---------------------------------------------------------
-# COMMANDS (!help / !info)
-# ---------------------------------------------------------
 @bot.command(name="help", aliases=["info", "command"])
 async def cmd_help(ctx):
     await ctx.send(embed=create_help_embed())
@@ -103,7 +106,6 @@ async def cmd_help(ctx):
 async def on_ready():
     print(f"Bot berhasil login sebagai {bot.user}")
     
-    # Kirim pesan salam saat bot baru online di RP Channel
     if RP_CHANNEL_ID:
         try:
             channel = bot.get_channel(int(RP_CHANNEL_ID))
@@ -126,14 +128,12 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # Proses command !help jika dipanggil
     await bot.process_commands(message)
 
     ctx = await bot.get_context(message)
     if ctx.valid:
         return
 
-    # Respon otomatis jika di RP Channel, DM, atau di-mention
     is_rp_channel = RP_CHANNEL_ID and str(message.channel.id) == str(RP_CHANNEL_ID)
     is_mentioned = bot.user in message.mentions
     is_dm = isinstance(message.channel, discord.DMChannel)
@@ -148,7 +148,7 @@ async def on_message(message):
             if reply:
                 await message.reply(reply, mention_author=False)
             else:
-                await message.reply("Ehh... Ibuki bingung mau jawab apa, Sensei... (><)", mention_author=False)
+                await message.reply("Ehehe~ Ada apa Sensei panggil Ibuki? (*^-^*)", mention_author=False)
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
