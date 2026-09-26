@@ -3,3 +3,4 @@ openai
 aiohttp
 PyNaCl
 davey
+google-genai
