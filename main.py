@@ -13,6 +13,9 @@ intents.presences = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# HAPUS COMMAND 'HELP' BAWAAN DISCORD UNTUK MENCEGAH CRASH BENTROK
+bot.remove_command('help')
+
 # ---------------------------------------------------------
 # FETCH ENVIRONMENT VARIABLES FROM RAILWAY
 # ---------------------------------------------------------
@@ -109,8 +112,8 @@ def create_info_embed():
 # ---------------------------------------------------------
 # COMMANDS LOCK BAHASA & HELP
 # ---------------------------------------------------------
-@bot.command(name="help", aliases=["info", "command", "commands"])
-async def cmd_help(ctx):
+@bot.command(name="info", aliases=["help", "command", "commands"])
+async def cmd_info(ctx):
     await ctx.send(embed=create_info_embed())
 
 @bot.command(name="ID", aliases=["id", "Indo", "indo"])
