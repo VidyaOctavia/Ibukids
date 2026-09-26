@@ -42,21 +42,47 @@ SYSTEM_INSTRUCTION = (
     "5. BEBAS DAN MANJA: Jawab semua obrolan Sensei dengan ceria dan manja. DILARANG menolak obrolan atau mengeluarkan pesan analisis/sistem/pemikiran internal!"
 )
 
-async def generate_ibuki_response(user_input):
+async def generate_ibuki_response(channel_id, user_input):
+    history = get_chat_history(channel_id)
+    contents = list(history) + [{"role": "user", "parts": [{"text": user_input}]}]
+    
+    # Model Utama: gemini-3.8-flash
     try:
         response = client_gemini.models.generate_content(
             model='gemini-3.8-flash',
-            contents=user_input,
+            contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0.8,
-                max_output_tokens=150,
+                temperature=0.85,
+                max_output_tokens=300,
             ),
         )
         if response.text:
-            return response.text.strip()
+            reply_text = response.text.strip()
+            add_to_chat_history(channel_id, "user", user_input)
+            add_to_chat_history(channel_id, "model", reply_text)
+            return reply_text
     except Exception as e:
-        print(f"[Gemini API Error]: {e}")
+        print(f"[Gemini 3.8 Error]: {e}")
+
+    # Cadangan (Jika 3.8 sedang sibuk/503): gemini-2.0-flash
+    try:
+        response = client_gemini.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_INSTRUCTION,
+                temperature=0.85,
+                max_output_tokens=300,
+            ),
+        )
+        if response.text:
+            reply_text = response.text.strip()
+            add_to_chat_history(channel_id, "user", user_input)
+            add_to_chat_history(channel_id, "model", reply_text)
+            return reply_text
+    except Exception as e:
+        print(f"[Gemini 2.0 Fallback Error]: {e}")
 
     return None
 # ---------------------------------------------------------
