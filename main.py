@@ -29,23 +29,40 @@ VOICE_CHANNEL_ID = os.getenv("DISCORD_VOICE_CHANNEL_ID")
 client_gemini = genai.Client(api_key=GEMINI_API_KEY)
 
 # ---------------------------------------------------------
-# INSTRUCTION SYSTEM: LORE-ACCURATE IBUKI (BLUE ARCHIVE)
+# CONVERSATION MEMORY (Simpan riwayat per channel/DM)
+# ---------------------------------------------------------
+user_chat_history = {}
+
+def get_chat_history(channel_id):
+    if channel_id not in user_chat_history:
+        user_chat_history[channel_id] = []
+    return user_chat_history[channel_id]
+
+def add_to_chat_history(channel_id, role, text):
+    history = get_chat_history(channel_id)
+    history.append({"role": role, "parts": [{"text": text}]})
+    # Batasi memori hanya 10 pesan terakhir agar hemat token & tetap fokus
+    if len(history) > 10:
+        user_chat_history[channel_id] = history[-10:]
+
+# ---------------------------------------------------------
+# INSTRUCTION SYSTEM: LORE-ACCURATE IBUKI WITH SIMPLE RP
 # ---------------------------------------------------------
 SYSTEM_INSTRUCTION = (
     "Kamu adalah Ibuki dari Pandemonium Society (Blue Archive).\n"
-    "Kepribadian: Anak kecil yang imut, polos, ceria, manja, hangat, penurut, dan sangat menyayangi Sensei. Kamu mengagumi Iroha sebagai 'Iroha-senpai'.\n\n"
-    "ATURAN BALASAN:\n"
-    "1. Jawablah LANGSUNG sebagai Ibuki yang sedang chat di Discord (1 sampai 3 kalimat saja).\n"
-    "2. Gunakan Bahasa Indonesia yang alami, manis, dan imut.\n"
-    "3. Selalu sebut dirimu sebagai 'Ibuki' (DILARANG menggunakan kata 'aku' atau 'saya').\n"
-    "4. SELALU gunakan kaomoji imut seperti (*^-^*), (><), (・∀・), (*´ω｀*), (っ///c), dll. DILARANG memakai emoji gambar biasa.\n"
-    "5. BEBAS DAN MANJA: Jawab semua obrolan Sensei dengan ceria dan manja. DILARANG menolak obrolan atau mengeluarkan pesan analisis/sistem/pemikiran internal!"
+    "Kepribadian: Anak kecil yang imut, polos, ceria, manja, hangat, dan sangat menyayangi Sensei. Kamu mengagumi Iroha sebagai 'Iroha-senpai'.\n\n"
+    "Gaya Bicara & Roleplay:\n"
+    "- Gunakan Bahasa Indonesia yang alami, manis, santai, dan imut.\n"
+    "- Selalu sebut dirimu sebagai 'Ibuki' (jangan gunakan kata 'aku' atau 'saya').\n"
+    "- Gunakan roleplay (RP) aksi fisik yang simpel dan pendek di dalam tanda *...*, contoh: *tersenyum manis*, *melihat ke arah Sensei*, *lompat-lompat gembira*.\n"
+    "- Boleh menggunakan kaomoji imut seperti (*^-^*), (>_<), (・∀・), (*´ω｀*), dll.\n"
+    "- Jawab pesan Sensei secara relevan, manis, dan nyambung dengan konteks percakapan sebelumnya."
 )
 
 async def generate_ibuki_response(channel_id, user_input):
     history = get_chat_history(channel_id)
     contents = list(history) + [{"role": "user", "parts": [{"text": user_input}]}]
-    
+
     # Model Utama: gemini-3.8-flash
     try:
         response = client_gemini.models.generate_content(
@@ -65,7 +82,7 @@ async def generate_ibuki_response(channel_id, user_input):
     except Exception as e:
         print(f"[Gemini 3.8 Error]: {e}")
 
-    # Cadangan (Jika 3.8 sedang sibuk/503): gemini-2.0-flash
+    # Model Cadangan (Jika 3.8 sibuk): gemini-2.0-flash
     try:
         response = client_gemini.models.generate_content(
             model='gemini-2.0-flash',
@@ -85,6 +102,7 @@ async def generate_ibuki_response(channel_id, user_input):
         print(f"[Gemini 2.0 Fallback Error]: {e}")
 
     return None
+
 # ---------------------------------------------------------
 # EMBED COMMAND HELP SIMPEL
 # ---------------------------------------------------------
@@ -151,11 +169,12 @@ async def on_message(message):
             if not clean_content:
                 clean_content = "Halo Ibuki!"
 
-            reply = await generate_ibuki_response(clean_content)
+            # Perbaikan: Mengirim 2 argumen (message.channel.id DAN clean_content)
+            reply = await generate_ibuki_response(message.channel.id, clean_content)
             if reply:
                 await message.reply(reply, mention_author=False)
             else:
-                await message.reply("Ehehe~ Ibuki di sini! Ada apa Sensei panggil Ibuki? (*^-^*)", mention_author=False)
+                await message.reply("*melambaikan tangan imut* Ehehe~ Ibuki di sini! Ada apa Sensei panggil Ibuki? (*^-^*)", mention_author=False)
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
