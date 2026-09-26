@@ -85,7 +85,7 @@ async def on_message(message):
 
                 # Kirim prompt ke OpenRouter (Model Uncensored Llama 3.3)
                 response = await client_openrouter.chat.completions.create(
-                    model="meta-llama/llama-3.3-70b-instruct:free",
+                   model="gryphe/mythomax-l2-13b:free",
                     messages=[
                         {"role": "system", "content": SYSTEM_INSTRUCTION},
                         {"role": "user", "content": user_prompt}
