@@ -134,7 +134,7 @@ async def cmd_en(ctx, *, message: str):
 @bot.command(name="JP", aliases=["jp", "Jp", "Japanese"])
 async def cmd_jp(ctx, *, message: str):
     async with ctx.typing():
-        reply = await generate_reply = await generate_ibuki_response(message, language_override="JP")
+        reply = await generate_ibuki_response(message, language_override="JP")
         if reply:
             await ctx.reply(reply, mention_author=False)
         else:
@@ -147,7 +147,7 @@ async def cmd_jp(ctx, *, message: str):
 async def on_ready():
     print(f"Bot berhasil login sebagai {bot.user}")
     
-    # Kirim pesan pendaftaran/info saat bot baru online di RP Channel
+    # Kirim pesan info saat bot baru online di RP Channel
     if RP_CHANNEL_ID:
         try:
             channel = bot.get_channel(int(RP_CHANNEL_ID))
