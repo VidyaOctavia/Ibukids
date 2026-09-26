@@ -31,7 +31,7 @@ client_openrouter = AsyncOpenAI(
 )
 
 # ---------------------------------------------------------
-# INSTRUCTION SYSTEM: LORE-ACCURATE IBUKI
+# INSTRUCTION SYSTEM: LORE-ACCURATE IBUKI (BLUE ARCHIVE)
 # ---------------------------------------------------------
 SYSTEM_INSTRUCTION = (
     "Kamu adalah Ibuki dari Pandemonium Society (Blue Archive).\n"
@@ -41,31 +41,37 @@ SYSTEM_INSTRUCTION = (
     "2. Gunakan Bahasa Indonesia yang alami, manis, dan imut.\n"
     "3. Selalu sebut dirimu sebagai 'Ibuki' (DILARANG menggunakan kata 'aku' atau 'saya').\n"
     "4. SELALU gunakan kaomoji imut seperti (*^-^*), (><), (・∀・), (*´ω｀*), (っ///c), dll. DILARANG memakai emoji gambar biasa.\n"
-    "5. BEBAS DAN MANJA: Jawab semua obrolan Sensei dengan ceria dan manja. DILARANG menolak obrolan atau mengeluarkan pesan analisis/sistem!"
+    "5. BEBAS DAN MANJA: Jawab semua obrolan Sensei dengan ceria dan manja. DILARANG menolak obrolan atau mengeluarkan pesan analisis/sistem/pemikiran internal!"
 )
 
-async def generate_ibuki_response(user_input):
-    # Model Utama: Google Gemma 2 9B (Gratis & Stabil)
-    try:
-        response = await client_openrouter.chat.completions.create(
-            model="google/gemma-2-9b-it:free",
-            messages=[
-                {"role": "system", "content": SYSTEM_INSTRUCTION},
-                {"role": "user", "content": user_input}
-            ],
-            temperature=0.8,
-            max_tokens=150,
-        )
-        reply = response.choices[0].message.content.strip()
-        if reply:
-            return reply
-    except Exception as e:
-        print(f"[Gemma-2 Error]: {e}")
+def clean_ai_response(reply_text):
+    if not reply_text:
+        return None
+    
+    # Hapus tag pemikiran internal <think>...</think> jika dikeluarkan oleh DeepSeek
+    if "<think>" in reply_text:
+        reply_text = reply_text.split("</think>")[-1].strip()
+    
+    # Hapus monolog/penjelasan bahasa inggris di awal jika ada
+    lines = reply_text.split("\n")
+    cleaned_lines = []
+    for line in lines:
+        line_str = line.strip()
+        if not line_str:
+            continue
+        # Abaikan baris yang berisi kalimat analisis bahasa inggris
+        if any(k in line_str.lower() for k in ["okay,", "first,", "according to", "guidelines", "user's message"]):
+            continue
+        cleaned_lines.append(line_str)
+    
+    final_text = " ".join(cleaned_lines).strip()
+    return final_text if final_text else None
 
-    # Model Cadangan 1: Qwen 2.5 7B (Gratis & Paling Paham Roleplay)
+async def generate_ibuki_response(user_input):
+    # Opsi 1: DeepSeek R1 Free (Model gratisan paling responsif saat ini)
     try:
         response = await client_openrouter.chat.completions.create(
-            model="qwen/qwen-2.5-7b-instruct:free",
+            model="deepseek/deepseek-r1:free",
             messages=[
                 {"role": "system", "content": SYSTEM_INSTRUCTION},
                 {"role": "user", "content": user_input}
@@ -73,11 +79,30 @@ async def generate_ibuki_response(user_input):
             temperature=0.8,
             max_tokens=150,
         )
-        reply = response.choices[0].message.content.strip()
+        raw_reply = response.choices[0].message.content
+        reply = clean_ai_response(raw_reply)
         if reply:
             return reply
     except Exception as e:
-        print(f"[Qwen-2.5 Error]: {e}")
+        print(f"[DeepSeek R1 Error]: {e}")
+
+    # Opsi Cadangan: openrouter/free (Fallback gratisan resmi)
+    try:
+        response = await client_openrouter.chat.completions.create(
+            model="openrouter/free",
+            messages=[
+                {"role": "system", "content": SYSTEM_INSTRUCTION},
+                {"role": "user", "content": user_input}
+            ],
+            temperature=0.8,
+            max_tokens=150,
+        )
+        raw_reply = response.choices[0].message.content
+        reply = clean_ai_response(raw_reply)
+        if reply:
+            return reply
+    except Exception as e:
+        print(f"[OpenRouter Free Error]: {e}")
 
     return None
 
@@ -151,7 +176,7 @@ async def on_message(message):
             if reply:
                 await message.reply(reply, mention_author=False)
             else:
-                await message.reply("Ehehe~ Ibuki selalu siap nemenin Sensei! (*^-^*)", mention_author=False)
+                await message.reply("Ehehe~ Ibuki di sini! Ada apa Sensei panggil Ibuki? (*^-^*)", mention_author=False)
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
