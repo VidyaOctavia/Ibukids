@@ -31,52 +31,55 @@ client_openrouter = AsyncOpenAI(
 )
 
 # ---------------------------------------------------------
-# INSTRUCTION SYSTEM: FREEDOM & LORE-ACCURATE IBUKI
+# INSTRUCTION SYSTEM: LORE-ACCURATE IBUKI
 # ---------------------------------------------------------
 SYSTEM_INSTRUCTION = (
     "Kamu adalah Ibuki dari Pandemonium Society (Blue Archive).\n"
     "Kepribadian: Anak kecil yang imut, polos, ceria, manja, hangat, penurut, dan sangat menyayangi Sensei. Kamu mengagumi Iroha sebagai 'Iroha-senpai'.\n\n"
-    "PANDUAN CHAT:\n"
-    "1. Jawablah langsung secara santai dan santun layaknya pesan obrolan di Discord (1-3 kalimat).\n"
-    "2. Gunakan selalu Bahasa Indonesia yang alami, manis, dan imut.\n"
-    "3. Selalu sebut dirimu sebagai 'Ibuki' (jangan gunakan 'aku' atau 'saya').\n"
-    "4. Gunakan kaomoji imut seperti (*^-^*), (><), (・∀・), (*´ω｀*), (っ///c), dll.\n"
-    "5. BEBAS DAN FLEKSIBEL: Responlah pesan Sensei dengan hangat, manja, dan manis tanpa ragu atau menolak topik."
+    "ATURAN BALASAN:\n"
+    "1. Jawablah LANGSUNG sebagai Ibuki yang sedang chat di Discord (1 sampai 3 kalimat saja).\n"
+    "2. Gunakan Bahasa Indonesia yang alami, manis, dan imut.\n"
+    "3. Selalu sebut dirimu sebagai 'Ibuki' (DILARANG menggunakan kata 'aku' atau 'saya').\n"
+    "4. SELALU gunakan kaomoji imut seperti (*^-^*), (><), (・∀・), (*´ω｀*), (っ///c), dll. DILARANG memakai emoji gambar biasa.\n"
+    "5. BEBAS DAN MANJA: Jawab semua obrolan Sensei dengan ceria dan manja. DILARANG menolak obrolan atau mengeluarkan pesan analisis/sistem!"
 )
 
 async def generate_ibuki_response(user_input):
+    # Model Utama: Google Gemma 2 9B (Gratis & Stabil)
     try:
-        # Menggunakan model Llama-3.3-70b gratis yang jauh lebih stabil & bebas
         response = await client_openrouter.chat.completions.create(
-            model="meta-llama/llama-3.3-70b-instruct:free",
+            model="google/gemma-2-9b-it:free",
             messages=[
                 {"role": "system", "content": SYSTEM_INSTRUCTION},
                 {"role": "user", "content": user_input}
             ],
-            temperature=0.85,
+            temperature=0.8,
             max_tokens=150,
         )
-        
         reply = response.choices[0].message.content.strip()
-        return reply if reply else None
-
+        if reply:
+            return reply
     except Exception as e:
-        print(f"[OpenRouter API Error]: {e}")
-        # Coba cadangan model free lainnya jika model utama sibuk
-        try:
-            fallback_response = await client_openrouter.chat.completions.create(
-                model="mistralai/mistral-7b-instruct:free",
-                messages=[
-                    {"role": "system", "content": SYSTEM_INSTRUCTION},
-                    {"role": "user", "content": user_input}
-                ],
-                temperature=0.85,
-                max_tokens=150,
-            )
-            return fallback_response.choices[0].message.content.strip()
-        except Exception as fallback_e:
-            print(f"[Fallback API Error]: {fallback_e}")
-            return None
+        print(f"[Gemma-2 Error]: {e}")
+
+    # Model Cadangan 1: Qwen 2.5 7B (Gratis & Paling Paham Roleplay)
+    try:
+        response = await client_openrouter.chat.completions.create(
+            model="qwen/qwen-2.5-7b-instruct:free",
+            messages=[
+                {"role": "system", "content": SYSTEM_INSTRUCTION},
+                {"role": "user", "content": user_input}
+            ],
+            temperature=0.8,
+            max_tokens=150,
+        )
+        reply = response.choices[0].message.content.strip()
+        if reply:
+            return reply
+    except Exception as e:
+        print(f"[Qwen-2.5 Error]: {e}")
+
+    return None
 
 # ---------------------------------------------------------
 # EMBED COMMAND HELP SIMPEL
@@ -148,7 +151,7 @@ async def on_message(message):
             if reply:
                 await message.reply(reply, mention_author=False)
             else:
-                await message.reply("Ehehe~ Ada apa Sensei panggil Ibuki? (*^-^*)", mention_author=False)
+                await message.reply("Ehehe~ Ibuki selalu siap nemenin Sensei! (*^-^*)", mention_author=False)
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
