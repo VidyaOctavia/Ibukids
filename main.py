@@ -1,7 +1,8 @@
 import os
 import discord
 from discord.ext import commands
-from openai import AsyncOpenAI
+from google import genai
+from google.genai import types
 
 # ---------------------------------------------------------
 # CONFIGURE DISCORD BOT INTENTS
@@ -20,15 +21,12 @@ bot.remove_command('help')
 # FETCH ENVIRONMENT VARIABLES FROM RAILWAY
 # ---------------------------------------------------------
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 RP_CHANNEL_ID = os.getenv("RP_CHANNEL_ID")
 VOICE_CHANNEL_ID = os.getenv("DISCORD_VOICE_CHANNEL_ID")
 
-# Initialize OpenRouter Async Client
-client_openrouter = AsyncOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY,
-)
+# Initialize Gemini Async Client
+client_gemini = genai.Client(api_key=GEMINI_API_KEY)
 
 # ---------------------------------------------------------
 # INSTRUCTION SYSTEM: LORE-ACCURATE IBUKI (BLUE ARCHIVE)
@@ -44,65 +42,21 @@ SYSTEM_INSTRUCTION = (
     "5. BEBAS DAN MANJA: Jawab semua obrolan Sensei dengan ceria dan manja. DILARANG menolak obrolan atau mengeluarkan pesan analisis/sistem/pemikiran internal!"
 )
 
-def clean_ai_response(reply_text):
-    if not reply_text:
-        return None
-    
-    # Hapus tag pemikiran internal <think>...</think> jika dikeluarkan oleh DeepSeek
-    if "<think>" in reply_text:
-        reply_text = reply_text.split("</think>")[-1].strip()
-    
-    # Hapus monolog/penjelasan bahasa inggris di awal jika ada
-    lines = reply_text.split("\n")
-    cleaned_lines = []
-    for line in lines:
-        line_str = line.strip()
-        if not line_str:
-            continue
-        # Abaikan baris yang berisi kalimat analisis bahasa inggris
-        if any(k in line_str.lower() for k in ["okay,", "first,", "according to", "guidelines", "user's message"]):
-            continue
-        cleaned_lines.append(line_str)
-    
-    final_text = " ".join(cleaned_lines).strip()
-    return final_text if final_text else None
-
 async def generate_ibuki_response(user_input):
-    # Opsi 1: DeepSeek R1 Free (Model gratisan paling responsif saat ini)
     try:
-        response = await client_openrouter.chat.completions.create(
-            model="deepseek/deepseek-r1:free",
-            messages=[
-                {"role": "system", "content": SYSTEM_INSTRUCTION},
-                {"role": "user", "content": user_input}
-            ],
-            temperature=0.8,
-            max_tokens=150,
+        response = client_gemini.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=user_input,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_INSTRUCTION,
+                temperature=0.8,
+                max_output_tokens=150,
+            ),
         )
-        raw_reply = response.choices[0].message.content
-        reply = clean_ai_response(raw_reply)
-        if reply:
-            return reply
+        if response.text:
+            return response.text.strip()
     except Exception as e:
-        print(f"[DeepSeek R1 Error]: {e}")
-
-    # Opsi Cadangan: openrouter/free (Fallback gratisan resmi)
-    try:
-        response = await client_openrouter.chat.completions.create(
-            model="openrouter/free",
-            messages=[
-                {"role": "system", "content": SYSTEM_INSTRUCTION},
-                {"role": "user", "content": user_input}
-            ],
-            temperature=0.8,
-            max_tokens=150,
-        )
-        raw_reply = response.choices[0].message.content
-        reply = clean_ai_response(raw_reply)
-        if reply:
-            return reply
-    except Exception as e:
-        print(f"[OpenRouter Free Error]: {e}")
+        print(f"[Gemini API Error]: {e}")
 
     return None
 
